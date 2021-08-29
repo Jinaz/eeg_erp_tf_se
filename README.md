@@ -1,5 +1,7 @@
 # This is a repository for my semesterproject for EEG at university stuttgart
 
+Feel free to visit: https://github.com/Jinaz/eeg_erp_tf_se  Here I uploaded my results. This zip should contain all needed things. If anything is missing feel free to drop me a message on ilias. Maybe some 3D framework is not doing its thing.
+
 # N170  dataset
 I chose this dataset because this one I could make the most out of. Imagining the experiment setup and procedure were the easiest for me on this one.
 ## running:
