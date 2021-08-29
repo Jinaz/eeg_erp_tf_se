@@ -5,46 +5,7 @@ import readData as rd
 from matplotlib import pyplot as plt 
 from surfer import Brain
 from mne.minimum_norm import make_inverse_operator, apply_inverse
-
-def get_epochs(epochs):
-    
-    
-    int_faces = epochs['faces']
-    int_cars= epochs['cars']
-    sc_faces= epochs['scrambled_faces']
-    sc_cars= epochs['scrambled_cars']
-
-    int_faces.set_eeg_reference(projection=True)
-    int_cars.set_eeg_reference(projection=True)
-    sc_faces.set_eeg_reference(projection=True)
-    sc_cars.set_eeg_reference(projection=True)
-
-        
-
-
-    return int_faces, int_cars, sc_faces, sc_cars
-
-def savePlots(stc, inittime, sid, conditionname):
-    h = mne.viz.plot_source_estimates(stc, initial_time=inittime, time_viewer=False,time_unit='s',views="lateral",hemi='split', size=(800, 400), show_traces=False)
-    img = stc_plot2img(h,closeAfterwards=True)
-    plt.imshow(img)
-    plt.axis('off')
-    plt.savefig("img/sub-{}/sub-{}_SourceEstimateAt-{}_C-{}.png".format(sid, sid, inittime,conditionname))
-
-
-def sourceEstimatePipeline(epochs, epochslist, evokeds, trans, src, bem, timestart, timeend):
-    inittime = evokeds.copy().crop(timestart,timeend).pick(['PO8']).get_peak()[1]
-
-    fwd = mne.make_forward_solution(epochs.info, trans=trans, src=src, bem=bem, eeg=True, mindist=5.0)
-    noise_cov = mne.compute_covariance(epochslist, tmax=0)
-    #noise_cov.plot(epochs.info)
-
-    inv_default = make_inverse_operator(epochs.info, fwd, noise_cov, loose=0.2, depth=0.8)
-
-    snr = 10.0
-    lambda2 = 1.0 / snr ** 2
-    stc = apply_inverse(evokeds, inv_default, lambda2, 'MNE')
-    return stc, inittime
+import source_Estimate_Subjectwise as ses 
 
 def stc_plot2img(h,title="SourceEstimate",closeAfterwards=False,crop=True):
     h.add_text(0.1, 0.9, title, 'title', font_size=16)
@@ -59,8 +20,14 @@ def stc_plot2img(h,title="SourceEstimate",closeAfterwards=False,crop=True):
         screenshot = screenshot[nonwhite_row][:, nonwhite_col]
     return screenshot
 
-if __name__ == "__main__":
+def savePlots(stc, inittime, conditionname):
+    h = mne.viz.plot_source_estimates(stc, initial_time=inittime, time_viewer=False,time_unit='s',views="lateral",hemi='split', size=(800, 400), show_traces=False)
+    img = stc_plot2img(h,closeAfterwards=True)
+    plt.imshow(img)
+    plt.axis('off')
+    plt.savefig("img/all_SourceEstimateAt-{}_C-{}.png".format(inittime,conditionname))
 
+if __name__ == "__main__":
     fsdir = fetch_fsaverage()
     subjectsdir = op.dirname(fsdir)
 
@@ -68,14 +35,19 @@ if __name__ == "__main__":
     trans = 'fsaverage'
     src = op.join(fsdir, 'bem', 'fsaverage-ico-5-src.fif')
     bem = op.join(fsdir, 'bem', 'fsaverage-5120-5120-5120-bem-sol.fif')
-    
+    epochsinfo = None
+    faces = []
+    evfa = []
+    cars = []
+    evca = []
 
     subjectids = rd.generateIDs()
-    for sid in subjectids:
+    newids = ['001','002','003','004','005','006','007','008','009','010','011','012','013','014','015','016','017','018','019','020']
+    for sid in newids:
 
         raw, evts, evtsdict = rd.readBids(sid)
         epochs = rd.get_epoched_Data(raw, evts, evtsdict)
-        epochs_faces, epochs_cars, sc_faces, sc_cars = get_epochs(epochs)
+        epochs_faces, epochs_cars, sc_faces, sc_cars = ses.get_epochs(epochs)
         #for combined
 
         epochs_cars.set_eeg_reference(projection=True)
@@ -84,13 +56,39 @@ if __name__ == "__main__":
         evfaces = epochs_faces.average()
         evcars = epochs_cars.average()
 
+        faces.append(epochs_faces)
+        evfa.append(evfaces)
 
-        comparison = mne.combine_evoked([evfaces,evcars], [1,-1])
-        stc, inittime = sourceEstimatePipeline(epochs, [epochs_faces, epochs_cars], comparison, trans, src, bem, 0.11, 0.24)
-        savePlots(stc, inittime, sid, "face-car")
+        cars.append(epochs_cars)
+        evca.append(evcars)
 
-        stc, inittime = sourceEstimatePipeline(epochs, epochs_faces, evfaces, trans, src, bem, 0.11, 0.18)
-        savePlots(stc, inittime, sid, "faces")
+        epochsinfo = epochs.copy()
 
-        stc, inittime = sourceEstimatePipeline(epochs, epochs_cars, evcars, trans, src, bem, 0.11, 0.24)
-        savePlots(stc, inittime, sid, "cars")
+    
+    
+
+    gafa = mne.grand_average(evfa)
+    gaca = mne.grand_average(evca)
+
+    del evfa 
+    del evca 
+    
+    stc, inittime = ses.sourceEstimatePipeline(epochsinfo, faces, gafa, trans, src, bem, 0.11, 0.18)
+    savePlots(stc, inittime, "face-ALL")
+
+    stc, inittime = ses.sourceEstimatePipeline(epochsinfo, cars, gaca, trans, src, bem, 0.11, 0.24)
+    savePlots(stc, inittime, "car-ALL")
+
+    
+
+    for face in faces:
+        cars.append(face)
+    del faces 
+    
+    comparison = mne.combine_evoked([gafa, gaca], [1,-1])
+    del gafa 
+    del gaca 
+
+
+    stc, inittime = ses.sourceEstimatePipeline(epochsinfo, cars, comparison, trans, src, bem, 0.11, 0.24)
+    savePlots(stc, inittime, "face-car-ALL")

@@ -92,4 +92,6 @@ if __name__ =="__main__":
     evoked_comparison_face_car = mne.combine_evoked([face, car], [1,-1])
     evoked_comparison_face_car_induced = mne.combine_evoked([faceinduced, carinduced], [1,-1])
 
+    pltEvoked(face, faceinduced, "all-faces")
+    pltEvoked(car, carinduced, "all-cars")
     pltEvoked(evoked_comparison_face_car, evoked_comparison_face_car_induced, "all-face-car")

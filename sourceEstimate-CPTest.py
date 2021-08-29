@@ -5,7 +5,7 @@ import readData as rd
 from matplotlib import pyplot as plt 
 from surfer import Brain
 from mne.minimum_norm import make_inverse_operator, apply_inverse
-import source_Estimate as ses 
+import source_Estimate_Subjectwise as ses 
 
 if __name__ == "__main__":
     fsdir = fetch_fsaverage()

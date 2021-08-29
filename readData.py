@@ -31,6 +31,8 @@ def readBids(subjectid, applyfilter=True):
     # read the file
     raw = read_raw_bids(bids_path)
 
+    raw.set_channel_types({'HEOG_left':'eog', 'HEOG_right':'eog', 'VEOG_lower':'eog'})
+
     raw.set_montage('standard_1020', match_case=False)
     raw.load_data()
 
